@@ -6,6 +6,9 @@ open class Window: TreeNode, Hashable {
     let app: any AbstractApp
     var lastFloatingSize: CGSize?
     var isFullscreen: Bool = false
+    /// Sticky windows follow the focused workspace across workspace (and monitor) switches.
+    /// See: https://github.com/nikitabobko/AeroSpace/issues/2
+    var isSticky: Bool = false
     var noOuterGapsInFullscreen: Bool = false
     var layoutReason: LayoutReason = .standard
 

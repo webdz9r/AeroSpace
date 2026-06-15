@@ -1,0 +1,45 @@
+= aerospace-sticky(1)
+include::util/man-attributes.adoc[]
+:manname: aerospace-sticky
+// tag::purpose[]
+:manpurpose: Pin a window so it follows you to every workspace
+// end::purpose[]
+
+// =========================================================== Synopsis
+== Synopsis
+[verse]
+// tag::synopsis[]
+aerospace sticky [-h|--help] [toggle] [--window-id <window-id>]
+aerospace sticky [-h|--help] on      [--window-id <window-id>]
+aerospace sticky [-h|--help] off     [--window-id <window-id>]
+
+// end::synopsis[]
+
+// =========================================================== Description
+== Description
+
+// tag::body[]
+{manpurpose}
+
+A sticky window is pinned: whenever you switch to a different workspace (on any monitor) the window
+is moved to that workspace, so it stays visible "no matter what screen space you're in".
+
+Sticky windows are always floating. Turning sticky `on` makes the window float if it isn't already,
+so it never disrupts the tiling layout. Turning sticky `off` leaves the window floating where it is.
+
+// =========================================================== Options
+include::./util/conditional-options-header.adoc[]
+
+-h, --help:: Print help
+
+--window-id <window-id>::
+include::./util/window-id-flag-desc.adoc[]
+
+// =========================================================== Arguments
+include::./util/conditional-arguments-header.adoc[]
+
+on, off, toggle::
+`on` pins the window. `off` unpins it. `toggle` (the default when no argument is provided) flips the
+current state.
+
+// end::body[]

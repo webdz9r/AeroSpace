@@ -71,8 +71,23 @@ private struct FrozenFocus: AeroAny, Equatable, Sendable {
     _focus = newFocus.frozen
     let status = newFocus.workspace.workspaceMonitor.setActiveWorkspace(newFocus.workspace)
 
+    // Sticky windows follow the focused workspace (across monitors too)
+    if oldFocus.workspace != newFocus.workspace {
+        pullStickyWindows(to: newFocus.workspace)
+    }
+
     newFocus.windowOrNil?.markAsMostRecentChild()
     return status
+}
+
+/// Re-parent every sticky window onto `workspace` so it stays visible after a workspace switch.
+/// See: https://github.com/nikitabobko/AeroSpace/issues/2
+@MainActor private func pullStickyWindows(to workspace: Workspace) {
+    for window in Workspace.all.flatMap({ $0.allLeafWindowsRecursive }) where window.isSticky {
+        if window.nodeWorkspace != workspace {
+            window.bindAsFloatingWindow(to: workspace)
+        }
+    }
 }
 extension Window {
     @MainActor func focusWindow() -> Bool {

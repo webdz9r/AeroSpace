@@ -214,8 +214,8 @@ on-mode-changed = []
     f = ['layout floating tiling', 'mode main'] # Toggle between floating and tiling layout
     backspace = ['close-all-windows-but-current', 'mode main']
 
-    # sticky is not yet supported https://github.com/nikitabobko/AeroSpace/issues/2
-    #s = ['layout sticky tiling', 'mode main']
+    # See: https://nikitabobko.github.io/AeroSpace/commands#sticky
+    s = ['sticky toggle', 'mode main'] # Pin window so it follows you to every workspace (floats it)
 
     alt-shift-h = ['join-with left', 'mode main']
     alt-shift-j = ['join-with down', 'mode main']
