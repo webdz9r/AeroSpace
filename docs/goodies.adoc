@@ -49,6 +49,38 @@ after-startup-command = [
 ]
 ----
 
+[#highlight-sticky-windows-with-a-colored-border]
+== Highlight sticky windows with a colored border
+
+If you pin windows with `aerospace sticky`, you can tint the
+link:https://github.com/FelixKratz/JankyBorders[JankyBorders] active border whenever the focused
+window is sticky. An `on-focus-changed` callback runs a small script that reads the focused window's
+sticky state from the `%{window-is-sticky}` format field.
+
+.~/.config/aerospace/sticky-borders.sh
+[source,bash]
+----
+#!/usr/bin/env bash
+command -v borders >/dev/null 2>&1 || exit 0   # no-op if JankyBorders isn't installed
+
+is_sticky=$(aerospace list-windows --focused --format '%{window-is-sticky}' 2>/dev/null || echo false)
+
+if [ "$is_sticky" = "true" ]; then
+    active_color=0xffe0af68   # gold when the focused window is sticky
+else
+    active_color=0xffe1e3e4   # default active border
+fi
+
+borders active_color="$active_color" inactive_color=0xff494d64 width=5.0
+----
+
+Make it executable with `chmod +x ~/.config/aerospace/sticky-borders.sh`, then wire it up:
+
+[source,toml]
+----
+on-focus-changed = ['exec-and-forget ~/.config/aerospace/sticky-borders.sh']
+----
+
 [#raycast-extension]
 == AeroSpace Raycast extension
 
