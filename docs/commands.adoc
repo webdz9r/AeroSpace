@@ -258,6 +258,12 @@ include::aerospace-subscribe.adoc[tags=synopsis]
 ----
 include::aerospace-subscribe.adoc[tags=purpose]
 include::aerospace-subscribe.adoc[tags=body]
+== sticky
+----
+include::aerospace-sticky.adoc[tags=synopsis]
+----
+include::aerospace-sticky.adoc[tags=purpose]
+include::aerospace-sticky.adoc[tags=body]
 
 == swap
 ----
