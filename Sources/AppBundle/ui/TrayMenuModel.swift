@@ -19,7 +19,10 @@ public final class TrayMenuModel: ObservableObject {
 @MainActor func updateTrayText() {
     let sortedMonitors = sortedMonitors
     let focus = focus
-    TrayMenuModel.shared.trayText = (activeMode?.takeIf { $0 != mainModeId }?.first.map { "(\($0.uppercased())) " } ?? "") +
+    // Show a pin when the focused window is sticky (visible in the text menu-bar styles)
+    let stickyIndicator = focus.windowOrNil?.isSticky == true ? "📌 " : ""
+    TrayMenuModel.shared.trayText = stickyIndicator +
+        (activeMode?.takeIf { $0 != mainModeId }?.first.map { "(\($0.uppercased())) " } ?? "") +
         sortedMonitors
         .map {
             let hasFullscreenWindows = $0.activeWorkspace.allLeafWindowsRecursive.contains { $0.isFullscreen }
