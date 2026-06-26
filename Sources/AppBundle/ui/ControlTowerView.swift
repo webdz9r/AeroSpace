@@ -8,6 +8,9 @@ final class ControlTowerModel: ObservableObject {
     let columns: Int
     let showMonitorLabel: Bool
     @Published var selectedIndex: Int
+    /// Window titles fetched asynchronously after the overlay opens (keyed by window id). They pop in
+    /// as they resolve so opening stays instant even if an app is slow to answer.
+    @Published var titles: [UInt32: String] = [:]
 
     var onSelect: ((String) -> Void)?
     var onCancel: (() -> Void)?
@@ -88,6 +91,7 @@ struct ControlTowerView: View {
                                     workspace: ws,
                                     isSelected: idx == model.selectedIndex,
                                     showMonitor: model.showMonitorLabel,
+                                    titles: model.titles,
                                 )
                                 .contentShape(Rectangle())
                                 .onTapGesture { model.select(index: idx) }
@@ -138,6 +142,7 @@ private struct WorkspaceCardView: View {
     let workspace: CTWorkspace
     let isSelected: Bool
     let showMonitor: Bool
+    let titles: [UInt32: String]
 
     private var borderColor: Color {
         if isSelected { return .accentColor }
@@ -172,7 +177,7 @@ private struct WorkspaceCardView: View {
                 }
             }
 
-            SchematicView(tiles: workspace.tiles)
+            SchematicView(tiles: workspace.tiles, titles: titles)
                 .aspectRatio(16.0 / 10.0, contentMode: .fit)
                 .background(Color.black.opacity(0.35))
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -192,12 +197,13 @@ private struct WorkspaceCardView: View {
 
 private struct SchematicView: View {
     let tiles: [CTTile]
+    let titles: [UInt32: String]
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
                 ForEach(tiles) { tile in
-                    TileView(tile: tile)
+                    TileView(tile: tile, title: titles[tile.windowId])
                         .frame(
                             width: max(6, tile.rect.width * geo.size.width - 3),
                             height: max(6, tile.rect.height * geo.size.height - 3),
@@ -214,6 +220,7 @@ private struct SchematicView: View {
 
 private struct TileView: View {
     let tile: CTTile
+    let title: String?
 
     var body: some View {
         ZStack {
@@ -223,20 +230,29 @@ private struct TileView: View {
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
                         .stroke(Color.white.opacity(0.35), lineWidth: 1),
                 )
-            VStack(spacing: 4) {
+            VStack(spacing: 3) {
                 if let icon = tile.icon {
                     Image(nsImage: icon)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 32, height: 32)
+                        .frame(width: 30, height: 30)
                 }
                 if tile.showsName {
                     Text(tile.appName)
-                        .font(.system(size: 10, weight: .medium))
+                        .font(.system(size: 10, weight: .semibold))
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .foregroundStyle(.white.opacity(0.95))
                         .padding(.horizontal, 4)
+                    if let title, !title.isEmpty, title != tile.appName {
+                        Text(title)
+                            .font(.system(size: 8.5))
+                            .lineLimit(2)
+                            .truncationMode(.tail)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(.white.opacity(0.6))
+                            .padding(.horizontal, 5)
+                    }
                 }
             }
             .padding(3)

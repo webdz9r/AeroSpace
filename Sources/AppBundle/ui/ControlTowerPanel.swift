@@ -11,6 +11,7 @@ final class ControlTowerPanel: NSPanel {
 
     private var model: ControlTowerModel?
     private var isShown = false
+    private var titleTask: Task<Void, Never>?
 
     private init() {
         super.init(
@@ -63,13 +64,32 @@ final class ControlTowerPanel: NSPanel {
         isShown = true
         NSApp.activate(ignoringOtherApps: true)
         makeKeyAndOrderFront(nil)
+        loadTitles(into: model)
     }
 
     private func hide() {
         isShown = false
+        titleTask?.cancel()
+        titleTask = nil
         orderOut(nil)
         contentView = nil
         model = nil
+    }
+
+    /// Fetch window titles concurrently after the overlay is up and feed them into the model as they
+    /// resolve. Keeps opening instant and tolerant of a slow/hung app.
+    private func loadTitles(into model: ControlTowerModel) {
+        let ids = model.workspaces.flatMap { $0.tiles.map(\.windowId) }
+        guard !ids.isEmpty else { return }
+        titleTask?.cancel()
+        titleTask = Task.startUnstructured { @MainActor [weak model] in
+            for id in ids {
+                if Task.isCancelled { return }
+                guard let window = Window.get(byId: id) else { continue }
+                let title = try? await window.getTitle(.cancellable)
+                if let title, !title.isEmpty { model?.titles[id] = title }
+            }
+        }
     }
 
     private func switchTo(_ workspaceName: String) {
