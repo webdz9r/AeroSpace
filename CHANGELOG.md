@@ -11,11 +11,37 @@ periodically rebases/merges upstream `main`; the **Baseline** note in each relea
 upstream point we diverged from.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Fork builds carry a
-`-sticky` version suffix (e.g. `0.12.0-sticky`) to distinguish them from stock releases.
+descriptive version suffix (e.g. `0.20.0-controltower`) to distinguish them from stock releases.
 
 ## [Unreleased]
 
 _Nothing yet._
+
+## [0.20.0-controltower] — 2026-06-26
+
+Baseline: rebased onto upstream `nikitabobko/AeroSpace` at `v0.20.0-Beta`.
+
+### Added
+
+- **Control Tower — visual workspace switcher.** New `control-tower` command toggles a
+  Mission-Control-style overlay showing every non-empty workspace as a schematic map: each workspace
+  is drawn as its real tiling layout with the app icon, name, and window title in each tile, grouped
+  by monitor. Navigate with the keyboard or mouse to switch workspaces.
+  - `aerospace control-tower` toggles the overlay open/closed.
+  - Bound to `alt-shift-tab` by default (replacing the `move-workspace-to-monitor` binding on that key).
+  - Keyboard: arrows to move, type a workspace name to jump, `Enter` to switch, `Esc` to cancel;
+    mouse: click a workspace to switch, click the dimmed background to cancel.
+  - Schematic is built entirely from the in-memory window tree (tiling geometry + app icons) — **no
+    Screen Recording permission and no private APIs**. Window titles are fetched asynchronously and
+    pop in so the overlay opens instantly. Floating windows render non-overlapping (a grid when a
+    workspace is all-floating; a separate strip when mixed with tiled windows).
+  - Frosted-glass backdrop (`NSVisualEffectView`); the overlay is never managed by AeroSpace itself.
+  - Fork-only GUI feature (against upstream's no-GUI value); not upstream-mergeable.
+
+### Changed
+
+- **Rebased the fork onto upstream `v0.20.0-Beta`** (previously based on ~`0.12`). Sticky windows and
+  the runaway-CPU fix below now ride on the new upstream base.
 
 ## [0.12.0-sticky] — 2026-06-26
 
@@ -47,4 +73,5 @@ Baseline: upstream `nikitabobko/AeroSpace` at `a60f963` ("Treat Outlook reminder
   `fix/runaway-app-registration-loop`.)
 
 [Unreleased]: https://github.com/webdz9r/AeroSpace/compare/main...HEAD
+[0.20.0-controltower]: https://github.com/webdz9r/AeroSpace/commits/main
 [0.12.0-sticky]: https://github.com/webdz9r/AeroSpace/commits/main
