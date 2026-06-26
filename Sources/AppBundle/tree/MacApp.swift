@@ -47,40 +47,50 @@ final class MacApp: AbstractApp {
         let pid = nsApp.processIdentifier
         // AX requests crash if you send them to yourself
         if pid == myPid { return nil }
+        // Don't try to register a dead app. Its AX subscription can never succeed, and retrying it
+        // would spin (the registration attempt records no failure, see below).
+        if nsApp.isTerminated { return nil }
 
-        while true {
-            if let existing = allAppsMap[pid] { return existing }
-            try checkCancellation()
-            if let wip = wipPids[pid] {
-                try await wip.await()
-                continue
-            }
-            let wip = AwaitableOneTimeBroadcastLatch()
-            wipPids[pid] = wip
+        if let existing = allAppsMap[pid] { return existing }
+        try checkCancellation()
+        // Another caller is already registering this pid: coalesce on its latch and return whatever
+        // it produced (nil if its attempt failed).
+        if let wip = wipPids[pid] {
+            try await wip.await()
+            return allAppsMap[pid]
+        }
+        let wip = AwaitableOneTimeBroadcastLatch()
+        wipPids[pid] = wip
 
-            let thread = Thread {
-                $axTaskLocalAppThreadToken.withValue(AxAppThreadToken(pid: pid, idForDebug: nsApp.idForDebug)) {
-                    let axApp = AXUIElementCreateApplication(nsApp.processIdentifier)
-                    let handlers: HandlerToNotifKeyMapping = unsafe [
-                        (refreshObs, [kAXWindowCreatedNotification, kAXFocusedWindowChangedNotification]),
-                    ]
-                    let job = RunLoopJob(.cancellable)
-                    let subscriptions = (try? unsafe AxSubscription.bulkSubscribe(nsApp, axApp, job, handlers)) ?? []
-                    let isGood = !subscriptions.isEmpty
-                    let app = isGood ? MacApp(nsApp, axApp, subscriptions, Thread.current) : nil
-                    Task.startUnstructured { @MainActor in
-                        allAppsMap[pid] = app
-                        await wip.signalToAll()
-                        wipPids[pid] = nil
-                    }
-                    if isGood {
-                        CFRunLoopRun()
-                    }
+        let thread = Thread {
+            $axTaskLocalAppThreadToken.withValue(AxAppThreadToken(pid: pid, idForDebug: nsApp.idForDebug)) {
+                let axApp = AXUIElementCreateApplication(nsApp.processIdentifier)
+                let handlers: HandlerToNotifKeyMapping = unsafe [
+                    (refreshObs, [kAXWindowCreatedNotification, kAXFocusedWindowChangedNotification]),
+                ]
+                let job = RunLoopJob(.cancellable)
+                let subscriptions = (try? unsafe AxSubscription.bulkSubscribe(nsApp, axApp, job, handlers)) ?? []
+                let isGood = !subscriptions.isEmpty
+                let app = isGood ? MacApp(nsApp, axApp, subscriptions, Thread.current) : nil
+                Task.startUnstructured { @MainActor in
+                    allAppsMap[pid] = app
+                    await wip.signalToAll()
+                    wipPids[pid] = nil
+                }
+                if isGood {
+                    CFRunLoopRun()
                 }
             }
-            thread.name = "AxAppThread \(nsApp.idForDebug)"
-            thread.start()
         }
+        thread.name = "AxAppThread \(nsApp.idForDebug)"
+        thread.start()
+
+        // Make a single registration attempt and return its outcome. On failure this returns nil
+        // (allAppsMap has no entry); we deliberately do NOT retry here — getOrRegister is called for
+        // every running app on every refresh cycle, so a failed registration is naturally re-attempted
+        // next cycle instead of busy-looping. This prevents a hung/terminated app from pegging a CPU.
+        try await wip.await()
+        return allAppsMap[pid]
     }
 
     func closeAndUnregisterAxWindow(_ windowId: UInt32) {
