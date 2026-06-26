@@ -1,0 +1,46 @@
+= aerospace-control-tower(1)
+include::util/man-attributes.adoc[]
+// tag::purpose[]
+:manpurpose: Toggle the Control Tower visual workspace switcher
+// end::purpose[]
+:manname: aerospace-control-tower
+
+// =========================================================== Synopsis
+== Synopsis
+[verse]
+// tag::synopsis[]
+aerospace control-tower [-h|--help]
+
+// end::synopsis[]
+
+// =========================================================== Description
+== Description
+
+// tag::body[]
+{manpurpose}
+
+Control Tower is a Mission-Control-style overlay. It shows every workspace that currently has
+windows as a schematic map — each workspace is drawn as its real tiling layout, with the app icon
+and name in each tile — grouped and labeled by monitor. Pick a workspace to switch to it.
+
+Running the command toggles the overlay: it opens if closed, and closes if already open.
+
+While the overlay is open:
+
+* Arrow keys move the selection between workspaces.
+* Typing a workspace name jumps to that workspace.
+* `Enter` switches to the selected workspace.
+* `Esc` (or clicking the dimmed background) closes without switching.
+* Clicking a workspace switches to it.
+
+This is a fork-only feature; it is not part of upstream AeroSpace.
+
+// =========================================================== Options
+include::./util/conditional-options-header.adoc[]
+
+-h, --help:: Print help
+
+// end::body[]
+
+// =========================================================== Footer
+include::util/man-footer.adoc[]
