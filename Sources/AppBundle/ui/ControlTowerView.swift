@@ -6,6 +6,7 @@ import SwiftUI
 final class ControlTowerModel: ObservableObject {
     let workspaces: [CTWorkspace]
     let columns: Int
+    let showMonitorLabel: Bool
     @Published var selectedIndex: Int
 
     var onSelect: ((String) -> Void)?
@@ -14,6 +15,7 @@ final class ControlTowerModel: ObservableObject {
     init(snapshot: ControlTowerSnapshot) {
         workspaces = snapshot.workspaces
         columns = max(1, min(4, Int(ceil(Double(max(workspaces.count, 1)).squareRoot()))))
+        showMonitorLabel = snapshot.monitorCount > 1
         selectedIndex = snapshot.focusedIndex ?? 0
     }
 
@@ -78,19 +80,28 @@ struct ControlTowerView: View {
                     .font(.title2)
                     .foregroundStyle(.white.opacity(0.85))
             } else {
-                VStack(spacing: 18) {
+                GeometryReader { geo in
                     ScrollView {
                         LazyVGrid(columns: gridColumns, spacing: 22) {
                             ForEach(Array(model.workspaces.enumerated()), id: \.element.id) { idx, ws in
-                                WorkspaceCardView(workspace: ws, isSelected: idx == model.selectedIndex)
-                                    .contentShape(Rectangle())
-                                    .onTapGesture { model.select(index: idx) }
+                                WorkspaceCardView(
+                                    workspace: ws,
+                                    isSelected: idx == model.selectedIndex,
+                                    showMonitor: model.showMonitorLabel,
+                                )
+                                .contentShape(Rectangle())
+                                .onTapGesture { model.select(index: idx) }
                             }
                         }
                         .frame(maxWidth: maxContentWidth)
+                        // Center horizontally within the full width, and vertically when it fits.
                         .frame(maxWidth: .infinity)
                         .padding(40)
+                        .frame(minHeight: geo.size.height, alignment: .center)
                     }
+                }
+                VStack {
+                    Spacer()
                     HintBar()
                 }
             }
@@ -126,6 +137,7 @@ private struct HintBar: View {
 private struct WorkspaceCardView: View {
     let workspace: CTWorkspace
     let isSelected: Bool
+    let showMonitor: Bool
 
     private var borderColor: Color {
         if isSelected { return .accentColor }
@@ -152,10 +164,12 @@ private struct WorkspaceCardView: View {
                         .foregroundStyle(.green.opacity(0.9))
                 }
                 Spacer(minLength: 4)
-                Text(workspace.monitorName)
-                    .font(.caption2)
-                    .lineLimit(1)
-                    .foregroundStyle(.white.opacity(0.45))
+                if showMonitor {
+                    Text(workspace.monitorName)
+                        .font(.caption2)
+                        .lineLimit(1)
+                        .foregroundStyle(.white.opacity(0.45))
+                }
             }
 
             SchematicView(tiles: workspace.tiles)
@@ -216,12 +230,14 @@ private struct TileView: View {
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 32, height: 32)
                 }
-                Text(tile.appName)
-                    .font(.system(size: 10, weight: .medium))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .foregroundStyle(.white.opacity(0.95))
-                    .padding(.horizontal, 4)
+                if tile.showsName {
+                    Text(tile.appName)
+                        .font(.system(size: 10, weight: .medium))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .foregroundStyle(.white.opacity(0.95))
+                        .padding(.horizontal, 4)
+                }
             }
             .padding(3)
         }

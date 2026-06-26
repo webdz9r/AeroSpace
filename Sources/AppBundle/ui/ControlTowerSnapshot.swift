@@ -6,6 +6,9 @@ import Common
 /// tree references.
 struct ControlTowerSnapshot {
     let workspaces: [CTWorkspace]
+    /// Number of distinct monitors the shown workspaces span. The per-card monitor label is only
+    /// worth showing when this is > 1.
+    let monitorCount: Int
 
     /// Index into `workspaces` of the currently focused workspace, if it's shown.
     var focusedIndex: Int? { workspaces.firstIndex { $0.isFocused } }
@@ -28,6 +31,9 @@ struct CTTile: Identifiable {
     let icon: NSImage?
     let rect: CGRect
     let isFloating: Bool
+    /// Whether to draw the app name. Suppressed for all-but-the-topmost window in a floating cascade
+    /// so overlapping labels don't collide.
+    let showsName: Bool
     var id: UInt32 { windowId }
 }
 
@@ -54,7 +60,8 @@ enum ControlTowerSnapshotBuilder {
                 tiles: tiles(for: ws),
             )
         }
-        return ControlTowerSnapshot(workspaces: workspaces)
+        let monitorCount = Set(ordered.map { $0.workspaceMonitor.rect.topLeftCorner }).count
+        return ControlTowerSnapshot(workspaces: workspaces, monitorCount: monitorCount)
     }
 
     // MARK: normalized layout
@@ -66,17 +73,17 @@ enum ControlTowerSnapshotBuilder {
     static func tiles(for workspace: Workspace) -> [CTTile] {
         var result: [CTTile] = []
         layout(workspace.rootTilingContainer, CGRect(x: 0, y: 0, width: 1, height: 1), into: &result)
-        // Floating windows: a small cascade in the center, drawn on top.
+        // Floating windows: a centered diagonal cascade drawn on top. Only the topmost (last) window
+        // shows its name so overlapping labels don't collide.
         let floating = workspace.floatingWindows
+        let count = floating.count
+        let size: CGFloat = 0.46
+        let spread: CGFloat = 0.09
+        let start = 0.5 - size / 2 - spread * CGFloat(count - 1) / 2
         for (i, window) in floating.enumerated() {
-            let step = 0.06 * CGFloat(i)
-            let size = 0.4
-            let origin = 0.3 + step
-            let rect = CGRect(
-                x: min(origin, 0.55), y: min(origin, 0.55),
-                width: size, height: size,
-            )
-            result.append(makeTile(window, rect, isFloating: true))
+            let pos = (start + spread * CGFloat(i)).coerce(in: 0 ... (1 - size))
+            let rect = CGRect(x: pos, y: pos, width: size, height: size)
+            result.append(makeTile(window, rect, isFloating: true, showsName: i == count - 1))
         }
         return result
     }
@@ -85,7 +92,7 @@ enum ControlTowerSnapshotBuilder {
     private static func layout(_ node: TreeNode, _ rect: CGRect, into out: inout [CTTile]) {
         switch node.nodeCases {
             case .window(let window):
-                out.append(makeTile(window, rect, isFloating: false))
+                out.append(makeTile(window, rect, isFloating: false, showsName: true))
             case .tilingContainer(let container):
                 let children = container.children
                 guard !children.isEmpty else { return }
@@ -120,7 +127,7 @@ enum ControlTowerSnapshotBuilder {
     }
 
     @MainActor
-    private static func makeTile(_ window: Window, _ rect: CGRect, isFloating: Bool) -> CTTile {
+    private static func makeTile(_ window: Window, _ rect: CGRect, isFloating: Bool, showsName: Bool) -> CTTile {
         let bundlePath = window.app.bundlePath
         let icon = bundlePath.map { NSWorkspace.shared.icon(forFile: $0) }
         return CTTile(
@@ -129,6 +136,7 @@ enum ControlTowerSnapshotBuilder {
             icon: icon,
             rect: rect,
             isFloating: isFloating,
+            showsName: showsName,
         )
     }
 }
