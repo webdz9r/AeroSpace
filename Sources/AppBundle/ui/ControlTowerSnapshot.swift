@@ -31,9 +31,6 @@ struct CTTile: Identifiable {
     let icon: NSImage?
     let rect: CGRect
     let isFloating: Bool
-    /// Whether to draw the app name. Suppressed for all-but-the-topmost window in a floating cascade
-    /// so overlapping labels don't collide.
-    let showsName: Bool
     var id: UInt32 { windowId }
 }
 
@@ -71,28 +68,51 @@ enum ControlTowerSnapshotBuilder {
     /// independent. Robust for hidden workspaces (windows are off-screen, but the tree/weights persist).
     @MainActor
     static func tiles(for workspace: Workspace) -> [CTTile] {
-        var result: [CTTile] = []
-        layout(workspace.rootTilingContainer, CGRect(x: 0, y: 0, width: 1, height: 1), into: &result)
-        // Floating windows: a centered diagonal cascade drawn on top. Only the topmost (last) window
-        // shows its name so overlapping labels don't collide.
+        let full = CGRect(x: 0, y: 0, width: 1, height: 1)
+        let tiledWindows = workspace.rootTilingContainer.allLeafWindowsRecursive
         let floating = workspace.floatingWindows
-        let count = floating.count
-        let size: CGFloat = 0.46
-        let spread: CGFloat = 0.09
-        let start = 0.5 - size / 2 - spread * CGFloat(count - 1) / 2
-        for (i, window) in floating.enumerated() {
-            let pos = (start + spread * CGFloat(i)).coerce(in: 0 ... (1 - size))
-            let rect = CGRect(x: pos, y: pos, width: size, height: size)
-            result.append(makeTile(window, rect, isFloating: true, showsName: i == count - 1))
+
+        var result: [CTTile] = []
+        switch (tiledWindows.isEmpty, floating.isEmpty) {
+            case (_, true): // tiled only
+                layout(workspace.rootTilingContainer, full, into: &result)
+            case (true, false): // floating only — fill the card with a non-overlapping grid
+                let cols = max(1, Int(ceil(Double(floating.count).squareRoot())))
+                result += gridTiles(floating, in: full, columns: cols)
+            case (false, false): // mixed — tiled on top, floating in a separate bottom strip
+                layout(workspace.rootTilingContainer, CGRect(x: 0, y: 0, width: 1, height: 0.62), into: &result)
+                result += gridTiles(floating, in: CGRect(x: 0, y: 0.66, width: 1, height: 0.34), columns: floating.count)
         }
         return result
+    }
+
+    /// Lay windows out in an even, non-overlapping grid within `rect`.
+    @MainActor
+    private static func gridTiles(_ windows: [Window], in rect: CGRect, columns: Int) -> [CTTile] {
+        guard !windows.isEmpty else { return [] }
+        let cols = max(1, columns)
+        let rows = Int(ceil(Double(windows.count) / Double(cols)))
+        let cellW = rect.width / CGFloat(cols)
+        let cellH = rect.height / CGFloat(rows)
+        let inset: CGFloat = 0.012
+        return windows.enumerated().map { i, window in
+            let col = i % cols
+            let row = i / cols
+            let cell = CGRect(
+                x: rect.minX + CGFloat(col) * cellW + inset,
+                y: rect.minY + CGFloat(row) * cellH + inset,
+                width: cellW - 2 * inset,
+                height: cellH - 2 * inset,
+            )
+            return makeTile(window, cell, isFloating: true)
+        }
     }
 
     @MainActor
     private static func layout(_ node: TreeNode, _ rect: CGRect, into out: inout [CTTile]) {
         switch node.nodeCases {
             case .window(let window):
-                out.append(makeTile(window, rect, isFloating: false, showsName: true))
+                out.append(makeTile(window, rect, isFloating: false))
             case .tilingContainer(let container):
                 let children = container.children
                 guard !children.isEmpty else { return }
@@ -127,7 +147,7 @@ enum ControlTowerSnapshotBuilder {
     }
 
     @MainActor
-    private static func makeTile(_ window: Window, _ rect: CGRect, isFloating: Bool, showsName: Bool) -> CTTile {
+    private static func makeTile(_ window: Window, _ rect: CGRect, isFloating: Bool) -> CTTile {
         let bundlePath = window.app.bundlePath
         let icon = bundlePath.map { NSWorkspace.shared.icon(forFile: $0) }
         return CTTile(
@@ -136,7 +156,6 @@ enum ControlTowerSnapshotBuilder {
             icon: icon,
             rect: rect,
             isFloating: isFloating,
-            showsName: showsName,
         )
     }
 }

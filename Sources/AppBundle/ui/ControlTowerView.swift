@@ -237,22 +237,20 @@ private struct TileView: View {
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 30, height: 30)
                 }
-                if tile.showsName {
-                    Text(tile.appName)
-                        .font(.system(size: 10, weight: .semibold))
-                        .lineLimit(1)
+                Text(tile.appName)
+                    .font(.system(size: 10, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .foregroundStyle(.white.opacity(0.95))
+                    .padding(.horizontal, 4)
+                if let title, !title.isEmpty, title != tile.appName {
+                    Text(title)
+                        .font(.system(size: 8.5))
+                        .lineLimit(2)
                         .truncationMode(.tail)
-                        .foregroundStyle(.white.opacity(0.95))
-                        .padding(.horizontal, 4)
-                    if let title, !title.isEmpty, title != tile.appName {
-                        Text(title)
-                            .font(.system(size: 8.5))
-                            .lineLimit(2)
-                            .truncationMode(.tail)
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(.white.opacity(0.6))
-                            .padding(.horizontal, 5)
-                    }
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .padding(.horizontal, 5)
                 }
             }
             .padding(3)
