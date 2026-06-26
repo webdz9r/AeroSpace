@@ -58,9 +58,17 @@ final class ControlTowerModel: ObservableObject {
 struct ControlTowerView: View {
     @ObservedObject var model: ControlTowerModel
 
+    private var gridColumns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 22), count: model.columns)
+    }
+
+    // Cap and center the content so it reads as a focused panel even on ultrawide displays.
+    private var maxContentWidth: CGFloat { CGFloat(model.columns) * 360 }
+
     var body: some View {
         ZStack {
-            Color.black.opacity(0.5)
+            // Subtle extra dim on top of the window's frosted backdrop; also the click-to-cancel target.
+            Color.black.opacity(0.28)
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { model.cancel() }
@@ -68,22 +76,49 @@ struct ControlTowerView: View {
             if model.workspaces.isEmpty {
                 Text("No open windows")
                     .font(.title2)
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(.white.opacity(0.85))
             } else {
-                ScrollView {
-                    LazyVGrid(
-                        columns: Array(repeating: GridItem(.flexible(), spacing: 24), count: model.columns),
-                        spacing: 24,
-                    ) {
-                        ForEach(Array(model.workspaces.enumerated()), id: \.element.id) { idx, ws in
-                            WorkspaceCardView(workspace: ws, isSelected: idx == model.selectedIndex)
-                                .contentShape(Rectangle())
-                                .onTapGesture { model.select(index: idx) }
+                VStack(spacing: 18) {
+                    ScrollView {
+                        LazyVGrid(columns: gridColumns, spacing: 22) {
+                            ForEach(Array(model.workspaces.enumerated()), id: \.element.id) { idx, ws in
+                                WorkspaceCardView(workspace: ws, isSelected: idx == model.selectedIndex)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { model.select(index: idx) }
+                            }
                         }
+                        .frame(maxWidth: maxContentWidth)
+                        .frame(maxWidth: .infinity)
+                        .padding(40)
                     }
-                    .padding(48)
+                    HintBar()
                 }
             }
+        }
+        .preferredColorScheme(.dark)
+    }
+}
+
+private struct HintBar: View {
+    var body: some View {
+        HStack(spacing: 16) {
+            hint("↑ ↓ ← →", "navigate")
+            hint("return", "switch")
+            hint("esc", "cancel")
+        }
+        .font(.system(size: 11))
+        .foregroundStyle(.white.opacity(0.55))
+        .padding(.bottom, 14)
+    }
+
+    private func hint(_ key: String, _ label: String) -> some View {
+        HStack(spacing: 5) {
+            Text(key)
+                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                .padding(.horizontal, 6).padding(.vertical, 2)
+                .background(Color.white.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+            Text(label)
         }
     }
 }
@@ -94,17 +129,24 @@ private struct WorkspaceCardView: View {
 
     private var borderColor: Color {
         if isSelected { return .accentColor }
-        if workspace.isFocused { return .white.opacity(0.55) }
-        return .white.opacity(0.12)
+        if workspace.isFocused { return .white.opacity(0.5) }
+        return .white.opacity(0.14)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
                 Text(workspace.name)
-                    .font(.system(.headline, design: .monospaced))
+                    .font(.system(.title2, design: .monospaced).weight(.bold))
                     .foregroundStyle(.white)
-                if workspace.isVisible {
+                if workspace.isFocused {
+                    Text("focused")
+                        .font(.system(size: 9, weight: .semibold))
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Color.accentColor.opacity(0.85))
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
+                } else if workspace.isVisible {
                     Image(systemName: "dot.circle.fill")
                         .font(.caption2)
                         .foregroundStyle(.green.opacity(0.9))
@@ -113,21 +155,24 @@ private struct WorkspaceCardView: View {
                 Text(workspace.monitorName)
                     .font(.caption2)
                     .lineLimit(1)
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(.white.opacity(0.45))
             }
 
             SchematicView(tiles: workspace.tiles)
                 .aspectRatio(16.0 / 10.0, contentMode: .fit)
-                .background(Color.white.opacity(0.04))
+                .background(Color.black.opacity(0.35))
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
-        .padding(12)
-        .background(Color.white.opacity(isSelected ? 0.14 : 0.07))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(14)
+        .background(Color.white.opacity(isSelected ? 0.16 : 0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(borderColor, lineWidth: isSelected ? 3 : 1.5),
         )
+        .shadow(color: .black.opacity(isSelected ? 0.45 : 0), radius: 16, y: 6)
+        .scaleEffect(isSelected ? 1.03 : 1.0)
+        .animation(.easeOut(duration: 0.12), value: isSelected)
     }
 }
 
@@ -140,8 +185,8 @@ private struct SchematicView: View {
                 ForEach(tiles) { tile in
                     TileView(tile: tile)
                         .frame(
-                            width: max(4, tile.rect.width * geo.size.width - 3),
-                            height: max(4, tile.rect.height * geo.size.height - 3),
+                            width: max(6, tile.rect.width * geo.size.width - 3),
+                            height: max(6, tile.rect.height * geo.size.height - 3),
                         )
                         .offset(
                             x: tile.rect.minX * geo.size.width + 1.5,
@@ -159,26 +204,26 @@ private struct TileView: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(Color.white.opacity(tile.isFloating ? 0.22 : 0.14))
+                .fill(Color.white.opacity(tile.isFloating ? 0.42 : 0.26))
                 .overlay(
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .stroke(Color.white.opacity(0.25), lineWidth: 1),
+                        .stroke(Color.white.opacity(0.35), lineWidth: 1),
                 )
-            VStack(spacing: 3) {
+            VStack(spacing: 4) {
                 if let icon = tile.icon {
                     Image(nsImage: icon)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 32, height: 32)
                 }
                 Text(tile.appName)
-                    .font(.system(size: 9))
+                    .font(.system(size: 10, weight: .medium))
                     .lineLimit(1)
                     .truncationMode(.tail)
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(.white.opacity(0.95))
                     .padding(.horizontal, 4)
             }
-            .padding(2)
+            .padding(3)
         }
     }
 }

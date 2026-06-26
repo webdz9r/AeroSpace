@@ -43,8 +43,23 @@ final class ControlTowerPanel: NSPanel {
         model.onCancel = { [weak self] in self?.cancelAndRestoreFocus() }
         self.model = model
 
-        contentView = NSHostingView(rootView: ControlTowerView(model: model))
+        // Frosted-glass backdrop so the desktop recedes and the schematic reads clearly.
+        let blur = NSVisualEffectView()
+        blur.material = .hudWindow
+        blur.blendingMode = .behindWindow
+        blur.state = .active
+        blur.appearance = NSAppearance(named: .darkAqua)
+        blur.autoresizingMask = [.width, .height]
+        let host = NSHostingView(rootView: ControlTowerView(model: model))
+        host.autoresizingMask = [.width, .height]
+        let container = NSView()
+        container.addSubview(blur)
+        container.addSubview(host)
+        contentView = container
+
         setFrame(activeScreenFrame(), display: true)
+        blur.frame = container.bounds
+        host.frame = container.bounds
         isShown = true
         NSApp.activate(ignoringOtherApps: true)
         makeKeyAndOrderFront(nil)
