@@ -17,6 +17,25 @@ descriptive version suffix (e.g. `0.20.0-controltower`) to distinguish them from
 
 _Nothing yet._
 
+## [0.20.0-restore] — 2026-06-26
+
+### Added
+
+- **Persist & restore window layout across restarts.** AeroSpace used to collapse every window onto
+  one workspace when restarted (it assigns each window to the active workspace of the monitor it's
+  physically on, and invisible-workspace windows sit off-screen in a corner). Now the full layout —
+  each window's workspace, the tiling tree (splits/weights/orientation), floating windows, and the
+  visible/focused workspaces — is saved to
+  `~/Library/Application Support/AeroSpace/window-layout.json` and restored on startup, so windows
+  return to where they were.
+  - Matching is by `CGWindowID`, stable across an AeroSpace-only restart while the apps keep running;
+    windows whose id is gone (app relaunched / reboot) are skipped tolerantly.
+  - Saving is debounced during the refresh cycle and flushed on termination; restore runs once at
+    startup before the first layout pass. Reuses the existing `FrozenWorld` snapshot (now `Codable`).
+  - New config key `restore-windows-on-startup` (default `true` in the fork; set `false` for stock
+    behavior).
+  - Fork-only feature.
+
 ## [0.20.0-controltower] — 2026-06-26
 
 Baseline: rebased onto upstream `nikitabobko/AeroSpace` at `v0.20.0-Beta`.
@@ -73,5 +92,6 @@ Baseline: upstream `nikitabobko/AeroSpace` at `a60f963` ("Treat Outlook reminder
   `fix/runaway-app-registration-loop`.)
 
 [Unreleased]: https://github.com/webdz9r/AeroSpace/compare/main...HEAD
+[0.20.0-restore]: https://github.com/webdz9r/AeroSpace/commits/main
 [0.20.0-controltower]: https://github.com/webdz9r/AeroSpace/commits/main
 [0.12.0-sticky]: https://github.com/webdz9r/AeroSpace/commits/main
