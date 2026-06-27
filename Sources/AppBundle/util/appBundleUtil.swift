@@ -26,6 +26,10 @@ func initTerminationHandler() {
 private struct AppServerTerminationHandler: TerminationHandler {
     @MainActor
     func beforeTermination() {
+        // Flush the window layout to disk before quitting (the tree is still intact here; the loop
+        // below only moves AX frames). The debounced save during the refresh cycle is the primary
+        // mechanism — this is a final flush for clean quits.
+        saveWindowLayoutNow()
         // Make all windows fullscreen before Quit
         for window in MacWindow.allWindowsMap.values {
             // makeAllWindowsVisibleAndRestoreSize may be invoked when something went wrong (e.g. some windows are unbound)

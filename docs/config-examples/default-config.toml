@@ -17,6 +17,11 @@ start-at-login = false
 # After setting this to true, reload once manually to start the auto-reloading
 auto-reload-config = false
 
+# Restore each window to its previous workspace and tiling layout after AeroSpace restarts
+# (fork-only feature). Set to false to keep the stock behavior. The layout is saved to
+# ~/Library/Application Support/AeroSpace/window-layout.json
+restore-windows-on-startup = true
+
 # Normalizations. See: https://nikitabobko.github.io/AeroSpace/guide#normalization
 enable-normalization-flatten-containers = true
 enable-normalization-opposite-orientation-for-nested-containers = true

@@ -27,8 +27,11 @@ import Foundation
             assumeCancellable: false,
             layoutWorkspaces: false,
         )
+        // Restore the persisted window->workspace layout (if any) before the first layout, so windows
+        // return to where they were instead of collapsing onto one workspace.
+        let didRestoreLayout = restoreWindowLayoutOnStartup()
         try await runLightSession(.startup, .forceRun) {
-            smartLayoutAtStartup()
+            if !didRestoreLayout { smartLayoutAtStartup() }
             _ = await config.afterStartupCommand.run(.defaultEnv, .emptyStdin)
         }
     }
